@@ -25,6 +25,8 @@ public class LC3asm {
         private int address; // the address that the label points to
         private String label; // the string representation of the label
         private int value; // the value, should one be necessary
+        private boolean nested = false;
+        private String nestLabel = "";
 
         public Symbol(int address, String label, int value) {
             this.address = address;
@@ -73,6 +75,13 @@ public class LC3asm {
             read = new Scanner(new File(args[0])); //initialize scanner for first pass
             pass = 1; // set pass to 1
             parse(); // run pass 1
+
+            //add nested symbols
+            for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
+                if (s.nested) {
+                    s.value = symbolTable.get(s.nestLabel).address;
+                }
+            }
 
             List<Symbol> symbols = new ArrayList<>(symbolTable.values());
             Collections.sort(symbols, (a, b) -> {
@@ -125,7 +134,7 @@ public class LC3asm {
                 input = input.substring(0, input.indexOf(";")); // truncate any comments off the end
             }
             input = input.toUpperCase(); // make it uppercase so parsing is easier
-            //System.out.println(Integer.toString(lc, 16) + ": " + input); // if you need to see which address a line of assembly maps to, uncomment this
+            System.out.println(Integer.toString(lc, 16) + ": " + input); // if you need to see which address a line of assembly maps to, uncomment this
             if (input.length() == 0) continue;
             List<String> words = new ArrayList<String>(Arrays.asList(input.split("[, \t]+"))); // split the string on spaces and commas
 
@@ -274,8 +283,8 @@ public class LC3asm {
         try {
             value = Integer.parseInt(num, radix);
         } catch (NumberFormatException nfe) {
-            nfe.printStackTrace();
-            System.exit(1);
+            //nfe.printStackTrace();
+            throw(nfe);
         }
         return value;
 
@@ -317,7 +326,7 @@ public class LC3asm {
         done = false;
         if (pass == 2) {
             obj.println("ORIG: " + int2hex(lc));
-            int numZero = lc - oldLC + 1;
+            int numZero = lc - oldLC;
             for (int i = 0; i < numZero; i++) {
                 dat.println("0000");
             }
@@ -328,7 +337,6 @@ public class LC3asm {
      * marks the end of the file
      */
     private static void gen_end(List<String> words) {
-        lc++;
         done = true;
         //this code below is for only 1 .end statement as the book defines it
         // if (!done) {
@@ -344,18 +352,43 @@ public class LC3asm {
      * creates the entry in obj file
      */
     private static void gen_fill(List<String> words) {
-        int value = str2int(words.get(1)); // extract value from assembly code
+        boolean nested = false;
+        int value = -999999999;
+        try {
+            value = str2int(words.get(1)); // extract value from assembly code
+        } catch (NumberFormatException nfe) {
+            nested = true;
+        }
         if (pass == 1) {
-            for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
-                if (s.address == lc) {
-                    s.value = value;
+            if (nested) {
+                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
+                    if (s.address == lc) {
+                        s.nested = true;
+                        s.nestLabel = words.get(1);
+                    }
+                }
+            } else {
+                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
+                    if (s.address == lc) {
+                        s.value = value;
+                    }
                 }
             }
         } else if (pass == 2) {
-            output(int2hex(value)); // add the hex value to the object file
+            if (nested) {
+                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
+                    if (s.address == lc) {
+                        output(int2hex(s.value));
+                        break;
+                    }
+                }
+            } else {
+                output(int2hex(value)); // add the hex value to the object file
+            }
+            
         }
-        lc++; // increment lc
 
+        lc++; // increment lc
     }
 
     /**
