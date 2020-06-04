@@ -327,7 +327,7 @@ public class LC3asm {
     /**
      * marks the end of the file
      */
-	private static void gen_end(List<String> words) {
+    private static void gen_end(List<String> words) {
         lc++;
         done = true;
         //this code below is for only 1 .end statement as the book defines it
@@ -337,13 +337,13 @@ public class LC3asm {
         //     debug.println("can only have one .end statement");
         //     System.exit(1);
         // }
-	}
+    }
 
     /**
      * updates a symbol in the symbol table if it is there
      * creates the entry in obj file
      */
-	private static void gen_fill(List<String> words) {
+    private static void gen_fill(List<String> words) {
         int value = str2int(words.get(1)); // extract value from assembly code
         if (pass == 1) {
             for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
@@ -361,7 +361,7 @@ public class LC3asm {
     /**
      * increments lc by the correct amount and makes room in the obj file
      */
-	private static void gen_blkw(List<String> words) {
+    private static void gen_blkw(List<String> words) {
         int w = str2int(words.get(1)); // get the size of block
         lc+=w; // make room for the word block
         if (pass == 2) {
@@ -370,12 +370,12 @@ public class LC3asm {
             }
         }
         //lc++; // increment lc after processing asm directive
-	}
+    }
 
     /**
      * updates lc and populates obj file
      */
-	private static void gen_stringz(List<String> words) {
+    private static void gen_stringz(List<String> words) {
         String s = words.get(1); //the string to be placed in memory at LC
         int len = s.length();
         if (pass == 2) {
@@ -388,7 +388,7 @@ public class LC3asm {
         lc += len; // increment lc by size of string
         lc += 1; // add the null terminator
         lc++; // increment lc after processing an assembler directive
-	}
+    }
 
     /**
      * generates the binary encoding of the ADD instruction
@@ -428,8 +428,8 @@ public class LC3asm {
             instruction = opcode << 12 | dr << 9 | sr1 << 6 | imm << 5 | val;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the AND instruction
@@ -469,8 +469,8 @@ public class LC3asm {
             instruction = opcode << 12 | dr << 9 | sr1 << 6 | imm << 5 | val;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the BR instruction
@@ -504,8 +504,8 @@ public class LC3asm {
             instruction = opcode << 12 | n << 11 | z << 10 | p << 9 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the JMP instruction
@@ -526,8 +526,8 @@ public class LC3asm {
             instruction = opcode << 12 | baseR << 6;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the JSR instruction
@@ -549,8 +549,8 @@ public class LC3asm {
             instruction = opcode << 12 | 1 << 11 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the JSRR instruction
@@ -571,8 +571,8 @@ public class LC3asm {
             instruction = opcode << 12 | baseR << 6;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the LD instruction
@@ -597,8 +597,8 @@ public class LC3asm {
             instruction = opcode << 12 | dr << 9 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the LDI instruction
@@ -624,7 +624,7 @@ public class LC3asm {
             output(int2hex(instruction));
         }
         lc++;
-	}
+    }
 
     /**
      * generates the binary encoding of the LDR instruction
@@ -652,8 +652,8 @@ public class LC3asm {
             instruction = opcode << 12 | dr << 9 | baseR << 6 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the LEA instruction
@@ -678,8 +678,8 @@ public class LC3asm {
             instruction = opcode << 12 | dr << 9 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the NOT instruction
@@ -706,16 +706,16 @@ public class LC3asm {
             instruction = opcode << 12 | dr << 9 | sr << 6 | fill;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the RET alias
      */
     private static void gen_ret(List<String> words) {
         words.add(1, "R7");
-    	gen_jmp(words);
-	}
+        gen_jmp(words);
+    }
 
     /**
      * generates the binary encoding of the ST instruction
@@ -740,8 +740,8 @@ public class LC3asm {
             instruction = opcode << 12 | sr << 9 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the STI instruction
@@ -766,8 +766,8 @@ public class LC3asm {
             instruction = opcode << 12 | sr << 9 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the STR instruction
@@ -795,8 +795,8 @@ public class LC3asm {
             instruction = opcode << 12 | sr << 9 | baseR << 6 | offset;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the TRAP instruction
@@ -814,8 +814,8 @@ public class LC3asm {
             instruction = opcode << 12 | trapvect8;
             output(int2hex(instruction));
         }
-    	lc++;
-	}
+        lc++;
+    }
 
     /**
      * generates the binary encoding of the HALT alias
@@ -823,6 +823,6 @@ public class LC3asm {
     private static void gen_halt(List<String> words) {
         words.add(1, "X25");
         gen_trap(words);
-	}
+    }
 
 }
