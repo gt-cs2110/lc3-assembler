@@ -12,7 +12,6 @@ import java.util.Collections;
 
 /**
  * Simple proof of concept assembler for LC3
- * no support for trap aliases (In, Out, Puts, etc)
  * obj file does not contain the number of values at every orig, instead orig is preceded by ORIG:
  *      ex: ORIG: x3000
  * no bounds checks for labels or any immediate values
@@ -22,11 +21,12 @@ public class LC3asm {
 
     // utility class for symbol table:
     static class Symbol {
+        //slightly bad practice, but fields are accessed by enclosing class so getters/setters unnecessary
         private int address; // the address that the label points to
         private String label; // the string representation of the label
         private int value; // the value, should one be necessary
-        private boolean nested = false;
-        private String nestLabel = "";
+        private boolean nested = false; // does the symbol reference another symbol?
+        private String nestLabel = ""; // what is the label for the symbol being referenced
 
         public Symbol(int address, String label, int value) {
             this.address = address;
@@ -45,13 +45,13 @@ public class LC3asm {
     static PrintStream obj; // printstream for object file
     static PrintStream sym; // printstream for symboltable
     static PrintStream debug; // printstream for debug
-    static PrintStream dat;
+    static PrintStream dat; // printstream for dat file (for datapath)
     static Map<String, Symbol> symbolTable = new HashMap<>(); // runtime copy of symbol table
-    static String[] pseudoOps = {".ORIG", ".END", ".FILL", ".BLKW", ".STRINGZ"};
+    static String[] pseudoOps = {".ORIG", ".END", ".FILL", ".BLKW", ".STRINGZ"}; // array of pseudoOps
     static List<String> directives = Arrays.asList(pseudoOps); // list of all pseudoOps
-    static String[] instructions = {"ADD", "AND", "BR", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "HALT"};
-    static List<String> mnemonics = Arrays.asList(instructions); // list of all instructions and aliases
-    static boolean done = false;
+    static String[] instructions = {"ADD", "AND", "BR", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "GETC", "OUT", "PUTS", "IN", "HALT"};
+    static List<String> mnemonics = Arrays.asList(instructions); // list of all instructions and Trap Aliases
+    static boolean done = false; // detect if missing end statements
 
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -59,7 +59,7 @@ public class LC3asm {
         }
         try {
 
-            System.out.println("if \"Success!!\" isnt printed, failed, check debug");
+            System.out.println("if \"Success!!\" isnt printed, assembly process has failed, check debug file");
 
             //here we are creating the output files and PrintStreams for them, this allows us to use them like System.out
             String filebase = args[0].substring(0, args[0].lastIndexOf('.')); // get the root filename without any extensions
@@ -67,24 +67,33 @@ public class LC3asm {
             obj = new PrintStream(outfile); // create printstream for the object file
             File symbolfile = new File(filebase + ".sym"); // output file for .sym
             sym = new PrintStream(symbolfile); // printstream for symbol table
-            File debugfile = new File(filebase + ".debug");
-            debug = new PrintStream(debugfile);
-            File datfile = new File(filebase + ".dat");
-            dat = new PrintStream(datfile);
+            File debugfile = new File(filebase + ".debug"); // output file for debug information
+            debug = new PrintStream(debugfile); // printstream for debug file
+            File datfile = new File(filebase + ".dat"); // output file for use in datapath
+            dat = new PrintStream(datfile); // printstream for debug file
 
             read = new Scanner(new File(args[0])); //initialize scanner for first pass
             pass = 1; // set pass to 1
             parse(); // run pass 1
 
             //add nested symbols
-            for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
-                if (s.nested) {
-                    s.value = symbolTable.get(s.nestLabel).address;
+            boolean nestResolved = false;
+            while (!nestResolved) { // loop until deep references are resolved
+                nestResolved = true;
+                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
+                    if (s.nested) {
+                        try {
+                            s.value = symbolTable.get(s.nestLabel).address;
+                            s.nested = false;
+                        } catch (Exception e) { // should be "NoSuchElementException"
+                            nestResolved = false;
+                        }
+                    }
                 }
             }
 
             List<Symbol> symbols = new ArrayList<>(symbolTable.values());
-            Collections.sort(symbols, (a, b) -> {
+            Collections.sort(symbols, (a, b) -> { // sort the symbol table by address for readability in print form
                 if (a.address >= b.address) {
                     return 1;
                 } else {
@@ -102,6 +111,7 @@ public class LC3asm {
             read.close();
             read = null;
             read = new Scanner(new File(args[0])); //reset scanner
+            lc = 0; // reset lc
             pass = 2; // set pass to 2
             parse(); // run pass 2
 
@@ -112,12 +122,15 @@ public class LC3asm {
             fnf.printStackTrace();
             System.exit(1);
         }
-
     }
 
+    /**
+     * prints to object file and to dat file
+     * @param outstring: the string to be output
+    */
     private static void output(String outstring) {
         obj.println(outstring);
-        dat.println(outstring.substring(outstring.indexOf("x") + 1));
+        dat.println(outstring.substring(outstring.indexOf("x") + 1)); // print without leading 'x'
     }
 
     /**
@@ -133,10 +146,25 @@ public class LC3asm {
             if (input.contains(";")){
                 input = input.substring(0, input.indexOf(";")); // truncate any comments off the end
             }
-            input = input.toUpperCase(); // make it uppercase so parsing is easier
-            System.out.println(Integer.toString(lc, 16) + ": " + input); // if you need to see which address a line of assembly maps to, uncomment this
+            //System.out.println(Integer.toString(lc, 16) + ": " + input); // if you need to see which address a line of assembly maps to, uncomment this
             if (input.length() == 0) continue;
-            List<String> words = new ArrayList<String>(Arrays.asList(input.split("[, \t]+"))); // split the string on spaces and commas
+
+            String[] sepStrLit = new String[2]; // need to separate out any string literals in the line
+            if (input.contains("\"")) {
+                int idx = input.indexOf("\"");
+                sepStrLit[0] = input.substring(0, idx).toUpperCase(); // uppercase to ease parsing
+                sepStrLit[1] = input.substring(idx+1, input.length()-1); // remainder of line except for quotes
+                if (input.charAt(input.length() - 1) != '\"') { // check for closing '\"' in string literal
+                    debug.println("invalid string literal in line");
+                    System.exit(1);
+                }
+            } else {
+                sepStrLit[0] = input.toUpperCase(); // uppercase to ease parsing
+                sepStrLit[1] = "";
+            }
+            String[] instWords = sepStrLit[0].split("[, \t]+");
+            List<String> words = new ArrayList<String>(Arrays.asList(instWords)); // split the string on spaces and commas
+            if (sepStrLit[1].length() != 0) words.add(words.size(), sepStrLit[1]);
 
             // if first word is not a pseudo op or opcode mnemonic, it must be a label
             if (!directives.contains(words.get(0)) && !mnemonics.contains(words.get(0)) && !words.get(0).substring(0,2).equals("BR")) {
@@ -149,7 +177,6 @@ public class LC3asm {
             }
 
             if (words.size() == 0) continue; // if a label is on a line by itself, there is nothing else to parse
-
 
             //process directives
             if (directives.contains(words.get(0))) {
@@ -234,7 +261,19 @@ public class LC3asm {
                         case 15: // TRAP
                             gen_trap(words);
                             break;
-                        case 16: //HALT
+                        case 16: //GETC
+                            gen_getc(words);
+                            break;
+                        case 17: //OUT
+                            gen_out(words);
+                            break;
+                        case 18: //PUTS
+                            gen_puts(words);
+                            break;
+                        case 19: //IN
+                            gen_in(words);
+                            break;
+                        case 20: //HALT
                             gen_halt(words);
                             break;
                         default:
@@ -242,13 +281,9 @@ public class LC3asm {
                             debug.println("invalid mnemonic");
                             System.exit(1);
                             break;
-
                     }
                 }
             }
-
-
-
         }
 
         if (!done) {
@@ -274,14 +309,23 @@ public class LC3asm {
         } else if (num.charAt(0) == '#') {
             num = num.substring(1);
         }
-        if (num.length() > 4) {
-            debug.println("error: immedate value too large: " + num + " at LC: " + int2hex(lc));
-            System.exit(1);
-
+        int value = 1;
+        if (num.charAt(0) == '-') { // set the sign of the value
+            value = -1;
+            num = num.substring(1);
         }
-        int value = 0;
+        if ((radix == 16 && num.length() > 4) || (radix == 10 && num.length() > 5)) { // determine if input valid;
+            int first = ((int) num.charAt(0)) - '0';
+            char fchar = num.toUpperCase().charAt(0);
+            if (!((first >= 0 && first <= 9) || (fchar >= 'A' && fchar <= 'F' && radix == 16))) { // input not a valid integer literal
+                throw(new NumberFormatException()); //not a valid number
+            } else {
+                debug.println("error: immediate value too large: " + num + " at LC: " + int2hex(lc));
+                System.exit(1);
+            }
+        }
         try {
-            value = Integer.parseInt(num, radix);
+            value *= Integer.parseInt(num, radix); // multiply to include sign
         } catch (NumberFormatException nfe) {
             //nfe.printStackTrace();
             throw(nfe);
@@ -327,7 +371,7 @@ public class LC3asm {
         if (pass == 2) {
             obj.println("ORIG: " + int2hex(lc));
             int numZero = lc - oldLC;
-            for (int i = 0; i < numZero; i++) {
+            for (int i = 0; i < numZero; i++) { // print 0's in dat file
                 dat.println("0000");
             }
         }
@@ -338,7 +382,7 @@ public class LC3asm {
      */
     private static void gen_end(List<String> words) {
         done = true;
-        //this code below is for only 1 .end statement as the book defines it
+        //this code below is for only 1 .orig/.end statement as the book defines it
         // if (!done) {
         //     done = true;
         // } else {
@@ -353,15 +397,15 @@ public class LC3asm {
      */
     private static void gen_fill(List<String> words) {
         boolean nested = false;
-        int value = -999999999;
+        int value = 999999999; // default value too large for 16 bits
         try {
             value = str2int(words.get(1)); // extract value from assembly code
         } catch (NumberFormatException nfe) {
-            nested = true;
+            nested = true; // parameter for fill is actually a label
         }
         if (pass == 1) {
             if (nested) {
-                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
+                for (Symbol s : symbolTable.values()) { //search the symbol table and update the nested characteristics
                     if (s.address == lc) {
                         s.nested = true;
                         s.nestLabel = words.get(1);
@@ -376,16 +420,10 @@ public class LC3asm {
             }
         } else if (pass == 2) {
             if (nested) {
-                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
-                    if (s.address == lc) {
-                        output(int2hex(s.value));
-                        break;
-                    }
-                }
+                output(int2hex(symbolTable.get(words.get(1)).address));
             } else {
                 output(int2hex(value)); // add the hex value to the object file
             }
-            
         }
 
         lc++; // increment lc
@@ -396,13 +434,13 @@ public class LC3asm {
      */
     private static void gen_blkw(List<String> words) {
         int w = str2int(words.get(1)); // get the size of block
-        lc+=w; // make room for the word block
+        lc += (w - 1); // make room for the word block (-1 because first word at initial lc)
         if (pass == 2) {
             for (int i = 0; i < w; i++) {
                 output(int2hex(0));
             }
         }
-        //lc++; // increment lc after processing asm directive
+        lc++; // increment lc after processing asm directive
     }
 
     /**
@@ -414,11 +452,21 @@ public class LC3asm {
         if (pass == 2) {
             for (int i = 0; i < len; i++) {
                 int c = (int) s.charAt(i);
-                output(int2hex(c)); // place char in memory
+                if (s.charAt(i) == '\\') { // catch escape characters
+                    if (s.charAt(i+1) == 'n') {
+                        output(int2hex(0x20)); // unfortunately due to the way len is implemented, will need to replace the '\' char with a space
+                        output(int2hex(0x0D));
+                        i++;
+                    } else {
+                        output(int2hex(c)); //output a slash if unimplemented escape character
+                    }
+                } else{
+                    output(int2hex(c)); // place char in memory
+                }
             }
             output(int2hex(0)); // null terminator (the z in stringZ)
         }
-        lc += len; // increment lc by size of string
+        lc += (len - 1); // increment lc by size of string (-1 because first char is at initial lc)
         lc += 1; // add the null terminator
         lc++; // increment lc after processing an assembler directive
     }
@@ -848,6 +896,38 @@ public class LC3asm {
             output(int2hex(instruction));
         }
         lc++;
+    }
+
+    /**
+     * generates the binary encoding of the GETC alias
+     */
+    private static void gen_getc(List<String> words) {
+        words.add(1, "X20");
+        gen_trap(words);
+    }
+
+    /**
+     * generates the binary encoding of the OUT alias
+     */
+    private static void gen_out(List<String> words) {
+        words.add(1, "X21");
+        gen_trap(words);
+    }
+
+    /**
+     * generates the binary encoding of the PUTS alias
+     */
+    private static void gen_puts(List<String> words) {
+        words.add(1, "X22");
+        gen_trap(words);
+    }
+
+    /**
+     * generates the binary encoding of the IN alias
+     */
+    private static void gen_in(List<String> words) {
+        words.add(1, "X23");
+        gen_trap(words);
     }
 
     /**
