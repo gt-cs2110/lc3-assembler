@@ -335,13 +335,18 @@ public class LC3asm {
     }
 
     /**
-     * takes in an integer and returns it as a 4 character hexadecimal string
+     * Takes in an integer and returns it as a 4 character hexadecimal string
+     *
+     * Note that this method will only consider the least significant sixteen
+     * bits. Anything higher will be discarded. This should usually work fine,
+     * but can lead to subtle issues.
      *
      * @param num: the integer for which a hex string is required
      * @return a hexadecimal string containing a leading x followed by the value num
      */
     private static String int2hex(int num) {
-        return String.format("x%04x", num);
+        // Isolate the least significant sixteen bits and print them
+        return String.format("x%04x", num & 0xFFFF);
     }
 
     /**
