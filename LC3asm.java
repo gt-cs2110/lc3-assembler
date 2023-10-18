@@ -167,6 +167,8 @@ public class LC3asm {
             if (sepStrLit[1].length() != 0) words.add(words.size(), sepStrLit[1]);
 
             // if first word is not a pseudo op or opcode mnemonic, it must be a label
+            // only supports labels with 2 or more characters
+            // labels must not start with "BR"
             if (!directives.contains(words.get(0)) && !mnemonics.contains(words.get(0)) && !words.get(0).substring(0,2).equals("BR")) {
                 //on pass 1 generate the symbol table
                 if (pass == 1) {
@@ -347,6 +349,27 @@ public class LC3asm {
     private static String int2hex(int num) {
         // Isolate the least significant sixteen bits and print them
         return String.format("x%04x", num & 0xFFFF);
+    }
+
+    /**
+     * Takes in an offset and the width of the encoded offset
+     * 
+     * Determines whether the offset fits within the 2'c complement
+     * range for the given bitwidth
+     * 
+     * @param offset: the offset provided by the label or programmer
+     * @param width: the width of the offset as defined by the LC-3 ISA
+     * @return true if the offset fits within the 2's complement range, false otherwise
+     */
+    private static boolean validate_2c_offset(int offset, int width) {
+        int minimum = -1 * (1 << (width - 1));
+        int maximum = (1 << (width - 1)) - 1;
+        if (offset > maximum || offset < minimum) {
+            debug.println("invalid offset: " + offset + " for bit width " + width);
+            return false;
+        } else {
+            return true;
+        }
     }
 
     /**
@@ -585,6 +608,9 @@ public class LC3asm {
             String lbl = words.get(1);
             Symbol s = symbolTable.get(lbl);
             int offset = s.address - (lc + 1); //PCOffset is from lc+1
+            if (!validate_2c_offset(offset, 9)) {
+                System.exit(1);
+            }
             offset = offset & 0x01FF; // keep only the lower 9 bits
 
             instruction = opcode << 12 | n << 11 | z << 10 | p << 9 | offset;
@@ -630,6 +656,9 @@ public class LC3asm {
             String lbl = words.get(1);
             Symbol s = symbolTable.get(lbl);
             int offset = s.address - (lc + 1); //PCOffset is from lc+1
+            if (!validate_2c_offset(offset, 11)) {
+                System.exit(1);
+            }
             offset = offset & 0x07FF; // keep only the lower 11 bits
 
             instruction = opcode << 12 | 1 << 11 | offset;
@@ -679,6 +708,9 @@ public class LC3asm {
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
             int offset = s.address - (lc + 1);
+            if (!validate_2c_offset(offset, 11)) {
+                System.exit(1);
+            }
             offset = offset & 0x01FF; // keep lower 9 bits
             instruction = opcode << 12 | dr << 9 | offset;
             output(int2hex(instruction));
@@ -705,6 +737,9 @@ public class LC3asm {
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
             int offset = s.address - (lc + 1);
+            if (!validate_2c_offset(offset, 9)) {
+                System.exit(1);
+            }
             offset = offset & 0x01FF; // keep lower 9 bits
             instruction = opcode << 12 | dr << 9 | offset;
             output(int2hex(instruction));
@@ -734,6 +769,9 @@ public class LC3asm {
                 System.exit(1);
             }
             int offset = str2int(words.get(3)); //get the offset6
+            if (!validate_2c_offset(offset, 6)) {
+                System.exit(1);
+            }
             offset = offset & 0x003F; // only keep the lower 6 bits of the offset;
             instruction = opcode << 12 | dr << 9 | baseR << 6 | offset;
             output(int2hex(instruction));
@@ -760,6 +798,9 @@ public class LC3asm {
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
             int offset = s.address - (lc + 1);
+            if (!validate_2c_offset(offset, 9)) {
+                System.exit(1);
+            }
             offset = offset & 0x01FF; // keep lower 9 bits
             instruction = opcode << 12 | dr << 9 | offset;
             output(int2hex(instruction));
@@ -822,6 +863,9 @@ public class LC3asm {
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
             int offset = s.address - (lc + 1);
+            if (!validate_2c_offset(offset, 9)) {
+                System.exit(1);
+            }
             offset = offset & 0x01FF; // keep lower 9 bits
             instruction = opcode << 12 | sr << 9 | offset;
             output(int2hex(instruction));
@@ -848,6 +892,9 @@ public class LC3asm {
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
             int offset = s.address - (lc + 1);
+            if (!validate_2c_offset(offset, 9)) {
+                System.exit(1);
+            }
             offset = offset & 0x01FF; // keep lower 9 bits
             instruction = opcode << 12 | sr << 9 | offset;
             output(int2hex(instruction));
@@ -877,6 +924,9 @@ public class LC3asm {
                 System.exit(1);
             }
             int offset = str2int(words.get(3)); //get the offset6
+            if (!validate_2c_offset(offset, 6)) {
+                System.exit(1);
+            }
             offset = offset & 0x003F; // only keep the lower 6 bits of the offset;
             instruction = opcode << 12 | sr << 9 | baseR << 6 | offset;
             output(int2hex(instruction));
