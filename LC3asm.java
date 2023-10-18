@@ -24,18 +24,20 @@ public class LC3asm {
         //slightly bad practice, but fields are accessed by enclosing class so getters/setters unnecessary
         private int address; // the address that the label points to
         private String label; // the string representation of the label
-        private int value; // the value, should one be necessary
         private boolean nested = false; // does the symbol reference another symbol?
         private String nestLabel = ""; // what is the label for the symbol being referenced
 
-        public Symbol(int address, String label, int value) {
+        public Symbol(int address, String label) {
             this.address = address;
             this.label = label;
-            this.value = value;
         }
 
         public String toString() {
-            return "x" + Integer.toString(address, 16) + "\t: " + label + "\t: " + Integer.toString(value, 16);
+            return "x" + Integer.toString(address, 16) + "\t: " + label;
+        }
+
+        public int hashCode() {
+            return label.hashCode();
         }
     }
 
@@ -82,10 +84,9 @@ public class LC3asm {
                 nestResolved = true;
                 for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
                     if (s.nested) {
-                        try {
-                            s.value = symbolTable.get(s.nestLabel).address;
+                        if (symbolTable.containsKey(s.nestLabel)) {
                             s.nested = false;
-                        } catch (Exception e) { // should be "NoSuchElementException"
+                        } else {
                             nestResolved = false;
                         }
                     }
@@ -101,10 +102,10 @@ public class LC3asm {
                 }
             });
 
-            sym.println("ADDRESS\t\t\tLABEL\t\tVALUE");
-            String fmt = "x%04x\t\t%10s\t\t%04x\n"; // a string format for printing the individual symbols
+            sym.println("ADDRESS\t\t\tLABEL");
+            String fmt = "x%04x\t\t%10s\n"; // a string format for printing the individual symbols
             for (Symbol s : symbols) {
-                sym.printf(fmt, s.address, s.label, s.value);
+                sym.printf(fmt, s.address, s.label);
             }
             System.out.println("Pass 1 complete, symbol table at: " + filebase + ".sym");
 
@@ -379,12 +380,11 @@ public class LC3asm {
         String lbl = words.get(0); // extract the label
 
         words.remove(0);
-        int value = 0; // value will be updated by the other
         if (words.size() >= 1 && words.get(0).equals(".ORIG")) {
             gen_orig(words);
         }
 
-        Symbol label = new Symbol(lc, lbl, value);
+        Symbol label = new Symbol(lc, lbl);
         debug.println("created symbol: " + label);
         symbolTable.put(lbl, label);
     }
@@ -437,12 +437,6 @@ public class LC3asm {
                     if (s.address == lc) {
                         s.nested = true;
                         s.nestLabel = words.get(1);
-                    }
-                }
-            } else {
-                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
-                    if (s.address == lc) {
-                        s.value = value;
                     }
                 }
             }
