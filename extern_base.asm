@@ -1,6 +1,8 @@
 .EXTERNAL OTHERFILE
 
 .ORIG x3000
+        AND R2, R2, 0
+        ADD R2, R2, 3
         LD R5, EXLOC
         JSRR R5
         HALT

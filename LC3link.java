@@ -15,17 +15,6 @@ import java.io.PrintStream;
  */
 public class LC3link {
 
-    // static class ORIG_BLOCK {
-    //     private int orig;
-    //     private List<Integer> memory;
-
-    //     public ORIG_BLOCK(int start) {
-    //         orig = start;
-    //         memory = new ArrayList<>();
-    //     }
-
-    // }
-
     static class Symbol {
         private int address; // the address that the label points to
         private String label; // the string representation of the label
@@ -49,10 +38,7 @@ public class LC3link {
 
     static Map<String, Symbol> symbolTable = new HashMap<>(); // runtime copy of symbol table
     static List<String> extern_users = new ArrayList<>(); // list of labels that need to be filled with an extern
-
-    // static Map<Integer, ORIG_BLOCK> chunks = new HashMap<>();
-    // static List<Integer> origs = new ArrayList<>();
-
+    
     static Map<Integer, Symbol> repairLocations = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
@@ -85,25 +71,25 @@ public class LC3link {
             symreader.close();
         }
 
-        String fmt = "x%04x              %-10s       %1d            %s\n"; // a string format for printing the individual symbols
-        for (Symbol s : symbolTable.values()) {
-            System.out.printf(fmt, s.address, s.label, s.external, s.externalLabel);
-        }
-
         System.out.println("Extern Users: " + extern_users.toString());
 
         System.out.println("resolving extern in symbol table");
-        PrintStream symbols_out = new PrintStream(new File("output.sym"));
-        symbols_out.println( "ADDRESS            LABEL            EXTERNAL     EXTLABEL");
-        String fmt2 = "x%04x              %-10s       %1d            %-10s          x%04x\n";
-        String symbol_fmt = "x%04x              %-10s       %1d            %s\n";
+        
+        String printfmt = "x%04x              %-10s       %1d            %-10s          x%04x\n";
         for (String user : extern_users) {
             Symbol s = symbolTable.get(user);
             s.fill_value = symbolTable.get(s.externalLabel).address;
             repairLocations.put(s.address, s);
             s.external = 0;
             s.externalLabel = "";
-            System.out.printf(fmt2, s.address, s.label, s.external, s.externalLabel, s.fill_value);
+            System.out.printf(printfmt, s.address, s.label, s.external, s.externalLabel, s.fill_value);
+        }
+
+        PrintStream symbols_out = new PrintStream(new File("output.sym"));
+                String symbol_fmt = "x%04x              %-10s       %1d            %s\n";
+
+        symbols_out.println( "ADDRESS            LABEL            EXTERNAL     EXTLABEL");
+        for (Symbol s : symbolTable.values()) {
             symbols_out.printf(symbol_fmt, s.address, s.label, s.external, s.externalLabel);
         }
 
@@ -137,6 +123,18 @@ public class LC3link {
         }
 
         // concatenate all of the listings from austin's changes for the lc3tools object file converter
+
+        PrintStream dbgsym_out = new PrintStream(new File("output.dbgsym"));
+        for (String filename : args) {
+            String dbgsym_filename = filename + ".dbgsym";
+            File dbgsymfile = new File(dbgsym_filename);
+            Scanner dbgsymreader = new Scanner(dbgsymfile);
+            while (dbgsymreader.hasNext()) {
+                String input = dbgsymreader.nextLine();
+                dbgsym_out.println(input);
+            }
+            dbgsymreader.close();
+        }
 
     }
 }
