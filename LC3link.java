@@ -45,13 +45,14 @@ public class LC3link {
 
         if (args.length == 0) {
             System.out.println("error incorrect inputs. Usage:");
-            System.out.println("java Lc3Link <file1> <file2> ... <file3>");
+            System.out.println("java Lc3Link <objfile1> <objfile2> ... <objfile3>");
             System.exit(1);
         }
 
         // go through all the filenames and build the aggregate symbol table
         for (String filename : args) {
-            String symbol_filename = filename + ".sym";
+            String filebase = filename.substring(0, filename.lastIndexOf('.')); // get the root filename without any extensions
+            String symbol_filename = filebase + ".sym";
             File symfile = new File(symbol_filename);
             Scanner symreader = new Scanner(symfile);
             symreader.nextLine(); // skip the header line
@@ -98,7 +99,7 @@ public class LC3link {
 
         PrintStream obj_out = new PrintStream(new File("output.obj"));
         for (String filename : args) {
-            String obj_filename = filename + ".obj";
+            String obj_filename = filename;
             File objfile = new File(obj_filename);
             Scanner objreader = new Scanner(objfile);
             int lc = 0;
@@ -126,7 +127,8 @@ public class LC3link {
 
         PrintStream dbgsym_out = new PrintStream(new File("output.dbgsym"));
         for (String filename : args) {
-            String dbgsym_filename = filename + ".dbgsym";
+            String filebase = filename.substring(0, filename.lastIndexOf('.')); // get the root filename without any extensions
+            String dbgsym_filename = filebase + ".dbgsym";
             File dbgsymfile = new File(dbgsym_filename);
             Scanner dbgsymreader = new Scanner(dbgsymfile);
             while (dbgsymreader.hasNext()) {
@@ -136,5 +138,6 @@ public class LC3link {
             dbgsymreader.close();
         }
 
+        System.out.println("Linked object file written to output.obj");
     }
 }
