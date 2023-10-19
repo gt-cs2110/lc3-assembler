@@ -16,12 +16,13 @@ First, compile the utilities in this repository:
 
     javac *.java
 
-To build an object file (will create `my_assembly.obj` and `my_assembly.sym`):
+To assemble some LC-3 assembly into an object file (will create the object file
+`my_assembly.obj` and the symbol table `my_assembly.sym`):
 
     java LC3asm my_assembly.asm
 
-To link object files (links `my_assembly.obj` and `my_library.obj` together
-into `linked.obj`):
+To link object files (links object files `my_assembly.obj` and `my_library.obj`
+together into `linked.obj`):
 
     java LC3link my_assembly.obj my_library.obj -o linked.obj
 
