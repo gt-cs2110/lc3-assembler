@@ -458,8 +458,8 @@ public class LC3asm {
             if (label) {
                 Symbol symbol = symbolTable.get(words.get(1));
                 if (symbol.external) {
-                    // write a zero word here for now. the linker will this in
-                    output(int2hex(0x0000));
+                    // write a foreboding message here for now. the linker will this in
+                    output(int2hex(0xDEAD));
                     // keep track of this so we can tell the linker to fill it in
                     symbol.fillAddresses.add(lc);
                 } else {

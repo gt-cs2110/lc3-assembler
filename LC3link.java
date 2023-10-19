@@ -125,6 +125,7 @@ public class LC3link {
                 String[] words = input.split(" ");
                 if (words[0].startsWith("ORIG:")) {
                     lc = Integer.parseInt(words[1].substring(1), 16);
+                    obj_out.printf("ORIG: x%04x\n", lc);
                 } else {
                     if (repairLocations.containsKey(lc)) {
                         obj_out.printf("x%04x\n", repairLocations.get(lc));
@@ -134,8 +135,6 @@ public class LC3link {
 
                     lc++;
                 }
-
-                
             }
             objreader.close();
         }
