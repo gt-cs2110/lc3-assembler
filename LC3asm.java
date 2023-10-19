@@ -50,6 +50,7 @@ public class LC3asm {
     static PrintStream sym; // printstream for symboltable
     static PrintStream debug; // printstream for debug
     static PrintStream dat; // printstream for dat file (for datapath)
+    static PrintStream dbgsym; // printstream for debug symbols (mapping addresses -> lines of code)
     static Map<String, Symbol> symbolTable = new HashMap<>(); // runtime copy of symbol table
     static String[] pseudoOps = {".ORIG", ".END", ".FILL", ".BLKW", ".STRINGZ", ".EXTERNAL"}; // array of pseudoOps
     static List<String> directives = Arrays.asList(pseudoOps); // list of all pseudoOps
@@ -75,6 +76,9 @@ public class LC3asm {
             debug = new PrintStream(debugfile); // printstream for debug file
             File datfile = new File(filebase + ".dat"); // output file for use in datapath
             dat = new PrintStream(datfile); // printstream for debug file
+            File dbgsymfile = new File(filebase + ".dbgsym"); // debug symbols. used to map addresses to source lines.
+                                                              // used by ObjToLC3Tools for conversion to LC3Tools object file
+            dbgsym = new PrintStream(dbgsymfile); // printstream for debug symbols
 
             read = new Scanner(new File(args[0])); //initialize scanner for first pass
             pass = 1; // set pass to 1
@@ -150,12 +154,12 @@ public class LC3asm {
      */
     private static void parse() {
         while (read.hasNext()) {
-
+            int initial_lc = lc; // used to print debug symbols
+            boolean writeDebugSymbols = true;
             String input = read.nextLine().trim(); // read the next line
             if (input.contains(";")){
                 input = input.substring(0, input.indexOf(";")); // truncate any comments off the end
             }
-            //System.out.println(Integer.toString(lc, 16) + ": " + input); // if you need to see which address a line of assembly maps to, uncomment this
             if (input.length() == 0) continue;
 
             String[] sepStrLit = new String[2]; // need to separate out any string literals in the line
@@ -196,9 +200,13 @@ public class LC3asm {
                 switch (directives.indexOf(words.get(0))) {
                     case 0: // orig
                         gen_orig(words);
+                        // don't write debug symbols for an .orig since it does not actually exist in memory
+                        writeDebugSymbols = false;
                         break;
                     case 1: // end
                         gen_end(words);
+                        // don't write debug symbols for an .end since it does not actually exist in memory
+                        writeDebugSymbols = false;
                         break;
                     case 2: // fill
                         gen_fill(words);
@@ -297,6 +305,12 @@ public class LC3asm {
                             break;
                     }
                 }
+            }
+
+            // If you need to see which address a line of assembly maps to, look at myfile.dbgsym.
+            // check here that pass==1 so we don't write the same thing to the .dbgsym file twice
+            if (writeDebugSymbols && pass == 1) {
+                dbgsym.println("x" + Integer.toString(initial_lc, 16) + ": " + input);
             }
         }
 
