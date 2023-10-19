@@ -5,20 +5,26 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.io.File;
+import java.io.PrintStream;
 
-
+/**
+ * Proof of concept linker for the LC-3
+ * takes in basenames for the files to be linked together
+ * aggregates their symbol tables
+ * then reads in each object file and repairs any external values
+ */
 public class LC3link {
 
-    static class ORIG_BLOCK {
-        private int orig;
-        private List<Integer> memory;
+    // static class ORIG_BLOCK {
+    //     private int orig;
+    //     private List<Integer> memory;
 
-        public ORIG_BLOCK(int start) {
-            orig = start;
-            memory = new ArrayList<>();
-        }
+    //     public ORIG_BLOCK(int start) {
+    //         orig = start;
+    //         memory = new ArrayList<>();
+    //     }
 
-    }
+    // }
 
     static class Symbol {
         private int address; // the address that the label points to
@@ -44,9 +50,10 @@ public class LC3link {
     static Map<String, Symbol> symbolTable = new HashMap<>(); // runtime copy of symbol table
     static List<String> extern_users = new ArrayList<>(); // list of labels that need to be filled with an extern
 
-    static Map<Integer, ORIG_BLOCK> chunks = new HashMap<>();
-    static List<Integer> origs = new ArrayList<>();
+    // static Map<Integer, ORIG_BLOCK> chunks = new HashMap<>();
+    // static List<Integer> origs = new ArrayList<>();
 
+    static Map<Integer, Symbol> repairLocations = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
 
@@ -86,14 +93,50 @@ public class LC3link {
         System.out.println("Extern Users: " + extern_users.toString());
 
         System.out.println("resolving extern in symbol table");
+        PrintStream symbols_out = new PrintStream(new File("output.sym"));
+        symbols_out.println( "ADDRESS            LABEL            EXTERNAL     EXTLABEL");
         String fmt2 = "x%04x              %-10s       %1d            %-10s          x%04x\n";
+        String symbol_fmt = "x%04x              %-10s       %1d            %s\n";
         for (String user : extern_users) {
             Symbol s = symbolTable.get(user);
             s.fill_value = symbolTable.get(s.externalLabel).address;
+            repairLocations.put(s.address, s);
+            s.external = 0;
+            s.externalLabel = "";
             System.out.printf(fmt2, s.address, s.label, s.external, s.externalLabel, s.fill_value);
+            symbols_out.printf(symbol_fmt, s.address, s.label, s.external, s.externalLabel);
         }
 
+        // open all the input files and as you go through them, calculate LC
+        // when the LC for a repair location is encountered, use the symbol instead of the value in text
 
+        PrintStream obj_out = new PrintStream(new File("output.obj"));
+        for (String filename : args) {
+            String obj_filename = filename + ".obj";
+            File objfile = new File(obj_filename);
+            Scanner objreader = new Scanner(objfile);
+            int lc = 0;
+            while (objreader.hasNext()) {
+                String input = objreader.nextLine().trim().replaceAll(" +", " ");
+                String[] words = input.split(" ");
+                if (words[0].contains("ORIG")) {
+                    lc = Integer.parseInt(words[1].substring(1), 16);
+                }
+                if (repairLocations.containsKey(lc)) {
+                    obj_out.printf("x%04x\n", repairLocations.get(lc).fill_value);
+                } else {
+                    obj_out.println(input);
+                }
+
+                if (words[0].charAt(0) == 'x') {
+                    lc++;
+                }
+                
+            }
+            objreader.close();
+        }
+
+        // concatenate all of the listings from austin's changes for the lc3tools object file converter
 
     }
 }
