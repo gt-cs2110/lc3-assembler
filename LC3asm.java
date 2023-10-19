@@ -219,6 +219,8 @@ public class LC3asm {
                         break;
                     case 5: // external
                         gen_external(words);
+                        // don't write debug symbols for an .external since it does not actually exist in memory
+                        writeDebugSymbols = false;
                         break;
                     default:
                         debug.println("invalid directive");
