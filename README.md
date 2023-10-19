@@ -38,4 +38,19 @@ on the left):
 Try all those commands and see what happens! We provided `my_library.asm` and
 `my_assembly.asm` in this repository for your convenience.
 
+Shell Aliases
+-------------
+
+If you use Linux or macOS, you may find these [shell aliases][3] useful for
+invoking the assembler, linker, etc. outside of this repository:
+
+    lc3asmrepo=/path/to/this/repository
+    alias lc3as='java -cp $lc3asmrepo LC3asm'
+    alias lc3ld='java -cp $lc3asmrepo LC3link'
+    alias lc3conv='java -cp $lc3asmrepo ObjToLC3Tools'
+
+If you are on Windows, [please see this helpful page][2].
+
 [1]: https://github.com/gt-cs2110/lc3tools
+[2]: http://web.archive.org/web/20180426064655/http://dilbert.com/strip/1995-06-24
+[3]: https://www.google.com/search?q=shell+aliases
