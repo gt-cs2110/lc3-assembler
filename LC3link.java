@@ -39,16 +39,46 @@ public class LC3link {
     
     static Map<Integer, Integer> repairLocations = new HashMap<>();
 
-    public static void main(String[] args) throws Exception {
+    private static void printUsageAndExit() {
+        System.err.println("error incorrect inputs. Usage:");
+        System.err.println("java Lc3Link <objfile1> <objfile2> ... <objfile3> [-o <outobjfile>]");
+        System.exit(1);
+    }
 
+    public static void main(String[] args) throws Exception {
         if (args.length == 0) {
-            System.out.println("error incorrect inputs. Usage:");
-            System.out.println("java Lc3Link <objfile1> <objfile2> ... <objfile3>");
-            System.exit(1);
+            printUsageAndExit();
         }
 
+        // tedious argument parsing logic for -o, which allows you to choose
+        // the output object file name
+        List<String> objFileNames = new ArrayList<String>();
+        String outObjFileName = null;
+        boolean justSawDashO = false;
+        for (String arg : args) {
+            boolean isDashO = arg.equals("-o");
+            if (!justSawDashO && outObjFileName == null && isDashO) {
+                justSawDashO = true;
+            } else if (justSawDashO && outObjFileName == null && !isDashO) {
+                outObjFileName = arg;
+                justSawDashO = false;
+            } else if (!justSawDashO) {
+                objFileNames.add(arg);
+            } else {
+                printUsageAndExit();
+            }
+        }
+        if (outObjFileName == null) {
+            if (justSawDashO) {
+                printUsageAndExit();
+            } else {
+                outObjFileName = "output.obj";
+            }
+        }
+        String outObjFileBase = outObjFileName.substring(0, outObjFileName.lastIndexOf('.')); // get the root filename without any extensions
+
         // go through all the filenames and build the aggregate symbol table
-        for (String filename : args) {
+        for (String filename : objFileNames) {
             String filebase = filename.substring(0, filename.lastIndexOf('.')); // get the root filename without any extensions
             String symbol_filename = filebase + ".sym";
             File symfile = new File(symbol_filename);
@@ -103,7 +133,7 @@ public class LC3link {
             }
         }
 
-        PrintStream symbols_out = new PrintStream(new File("output.sym"));
+        PrintStream symbols_out = new PrintStream(new File(outObjFileBase + ".sym"));
         String symbol_fmt = "x%04x              %-10s       %1d\n";
 
         symbols_out.println( "ADDRESS            LABEL            EXTERNAL");
@@ -114,8 +144,8 @@ public class LC3link {
         // open all the input files and as you go through them, calculate LC
         // when the LC for a repair location is encountered, use the symbol instead of the value in text
 
-        PrintStream obj_out = new PrintStream(new File("output.obj"));
-        for (String filename : args) {
+        PrintStream obj_out = new PrintStream(new File(outObjFileName));
+        for (String filename : objFileNames) {
             String obj_filename = filename;
             File objfile = new File(obj_filename);
             Scanner objreader = new Scanner(objfile);
@@ -141,8 +171,8 @@ public class LC3link {
 
         // concatenate all of the listings from austin's changes for the lc3tools object file converter
 
-        PrintStream dbgsym_out = new PrintStream(new File("output.dbgsym"));
-        for (String filename : args) {
+        PrintStream dbgsym_out = new PrintStream(new File(outObjFileBase + ".dbgsym"));
+        for (String filename : objFileNames) {
             String filebase = filename.substring(0, filename.lastIndexOf('.')); // get the root filename without any extensions
             String dbgsym_filename = filebase + ".dbgsym";
             File dbgsymfile = new File(dbgsym_filename);
@@ -154,6 +184,6 @@ public class LC3link {
             dbgsymreader.close();
         }
 
-        System.out.println("Linked object file written to output.obj");
+        System.out.println("Linked object file written to " + outObjFileName);
     }
 }
