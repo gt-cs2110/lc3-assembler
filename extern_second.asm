@@ -1,0 +1,4 @@
+.ORIG x4000
+OTHERFILE   ADD R2, R2, R2
+            RET
+.END

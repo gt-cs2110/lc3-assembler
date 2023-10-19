@@ -14,18 +14,20 @@ import java.util.Collections;
  * Simple proof of concept assembler for LC3
  * obj file does not contain the number of values at every orig, instead orig is preceded by ORIG:
  *      ex: ORIG: x3000
- * no bounds checks for labels or any immediate values
+ * some bounds checks for labels, offsets, and immediate values
  * Author: Pulkit Gupta
  */
 public class LC3asm {
 
     // utility class for symbol table:
     static class Symbol {
-        //slightly bad practice, but fields are accessed by enclosing class so getters/setters unnecessary
+        // slightly bad practice, but fields are accessed by enclosing class so getters/setters unnecessary
         private int address; // the address that the label points to
         private String label; // the string representation of the label
         private boolean nested = false; // does the symbol reference another symbol?
         private String nestLabel = ""; // what is the label for the symbol being referenced
+        private int external = 0; // does this symbol reference another file?
+        private boolean extern_symbol = false; // is this from an extern statement?
 
         public Symbol(int address, String label) {
             this.address = address;
@@ -49,7 +51,7 @@ public class LC3asm {
     static PrintStream debug; // printstream for debug
     static PrintStream dat; // printstream for dat file (for datapath)
     static Map<String, Symbol> symbolTable = new HashMap<>(); // runtime copy of symbol table
-    static String[] pseudoOps = {".ORIG", ".END", ".FILL", ".BLKW", ".STRINGZ"}; // array of pseudoOps
+    static String[] pseudoOps = {".ORIG", ".END", ".FILL", ".BLKW", ".STRINGZ", ".EXTERNAL"}; // array of pseudoOps
     static List<String> directives = Arrays.asList(pseudoOps); // list of all pseudoOps
     static String[] instructions = {"ADD", "AND", "BR", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "GETC", "OUT", "PUTS", "IN", "HALT"};
     static List<String> mnemonics = Arrays.asList(instructions); // list of all instructions and Trap Aliases
@@ -86,6 +88,9 @@ public class LC3asm {
                     if (s.nested) {
                         if (symbolTable.containsKey(s.nestLabel)) {
                             s.nested = false;
+                            if (symbolTable.get(s.nestLabel).extern_symbol) {
+                                s.external = 1;
+                            }
                         } else {
                             nestResolved = false;
                         }
@@ -102,10 +107,13 @@ public class LC3asm {
                 }
             });
 
-            sym.println("ADDRESS\t\t\tLABEL");
-            String fmt = "x%04x\t\t%10s\n"; // a string format for printing the individual symbols
+            sym.println( "ADDRESS            LABEL            EXTERNAL     EXTLABEL");
+            String fmt = "x%04x              %-10s       %1d            %s\n"; // a string format for printing the individual symbols
             for (Symbol s : symbols) {
-                sym.printf(fmt, s.address, s.label);
+                if (s.extern_symbol) { // Don't print extern statements
+                    continue;
+                }
+                sym.printf(fmt, s.address, s.label, s.external, s.nestLabel);
             }
             System.out.println("Pass 1 complete, symbol table at: " + filebase + ".sym");
 
@@ -200,6 +208,9 @@ public class LC3asm {
                         break;
                     case 4: // stringz
                         gen_stringz(words);
+                        break;
+                    case 5: // external
+                        gen_external(words);
                         break;
                     default:
                         debug.println("invalid directive");
@@ -452,6 +463,17 @@ public class LC3asm {
     }
 
     /**
+     * updates a symbol in the symbol table to be external
+     */
+    private static void gen_external(List<String> words) {
+        if (pass == 1) {
+            Symbol external = new Symbol(-1, words.get(1));
+            external.extern_symbol = true;
+            symbolTable.put(words.get(1), external);
+        }
+    }
+
+    /**
      * increments lc by the correct amount and makes room in the obj file
      */
     private static void gen_blkw(List<String> words) {
@@ -526,6 +548,9 @@ public class LC3asm {
             } else {
                 imm = 1;
                 val = str2int(words.get(3)); //get the imm5
+                if (!validate_2c_offset(val, 5)) {
+                    System.exit(-1);
+                }
             }
             val = val & 0x001F; // only keep the lower 5 bits of the imm;
             instruction = opcode << 12 | dr << 9 | sr1 << 6 | imm << 5 | val;
@@ -567,6 +592,9 @@ public class LC3asm {
             } else {
                 imm = 1;
                 val = str2int(words.get(3)); //get the imm5
+                if (!validate_2c_offset(val, 5)) {
+                    System.exit(-1);
+                }
             }
             val = val & 0x001F; // only keep the lower 5 bits of the imm;
             instruction = opcode << 12 | dr << 9 | sr1 << 6 | imm << 5 | val;
