@@ -24,14 +24,15 @@ public class LC3asm {
         // slightly bad practice, but fields are accessed by enclosing class so getters/setters unnecessary
         private int address; // the address that the label points to
         private String label; // the string representation of the label
-        private boolean nested = false; // does the symbol reference another symbol?
-        private String nestLabel = ""; // what is the label for the symbol being referenced
-        private int external = 0; // does this symbol reference another file?
-        private boolean extern_symbol = false; // is this from an extern statement?
+        private boolean external; // is this symbol defined in another file?
+        private List<Integer> fillAddresses; // list of locations to be filled with this label.
+                                             // we pass this to the linker to handle .EXTERNAL symbols
 
         public Symbol(int address, String label) {
             this.address = address;
             this.label = label;
+            this.external = false;
+            this.fillAddresses = new ArrayList<Integer>();
         }
 
         public String toString() {
@@ -84,24 +85,6 @@ public class LC3asm {
             pass = 1; // set pass to 1
             parse(); // run pass 1
 
-            //add nested symbols
-            boolean nestResolved = false;
-            while (!nestResolved) { // loop until deep references are resolved
-                nestResolved = true;
-                for (Symbol s : symbolTable.values()) { //search the symbol table and update the value in the corresponding entry
-                    if (s.nested) {
-                        if (symbolTable.containsKey(s.nestLabel)) {
-                            s.nested = false;
-                            if (symbolTable.get(s.nestLabel).extern_symbol) {
-                                s.external = 1;
-                            }
-                        } else {
-                            nestResolved = false;
-                        }
-                    }
-                }
-            }
-
             List<Symbol> symbols = new ArrayList<>(symbolTable.values());
             Collections.sort(symbols, (a, b) -> { // sort the symbol table by address for readability in print form
                 if (a.address >= b.address) {
@@ -111,13 +94,15 @@ public class LC3asm {
                 }
             });
 
-            sym.println( "ADDRESS            LABEL            EXTERNAL     EXTLABEL");
-            String fmt = "x%04x              %-10s       %1d            %s\n"; // a string format for printing the individual symbols
+            sym.println( "ADDRESS            LABEL            EXTERNAL");
+            String fmt = "x%04x              %-10s       %1d\n"; // a string format for printing the individual symbols
             for (Symbol s : symbols) {
-                if (s.extern_symbol) { // Don't print extern statements
+                // don't print extern statements until the second pass collects
+                // all the addresses where they're used by a .fill
+                if (s.external) {
                     continue;
                 }
-                sym.printf(fmt, s.address, s.label, s.external, s.nestLabel);
+                sym.printf(fmt, s.address, s.label, 0);
             }
             System.out.println("Pass 1 complete, symbol table at: " + filebase + ".sym");
 
@@ -127,6 +112,17 @@ public class LC3asm {
             lc = 0; // reset lc
             pass = 2; // set pass to 2
             parse(); // run pass 2
+
+            // now that the second pass found everywhere we .fill'd an
+            // .EXTERNAL label, add them to the symbol table so the linker can
+            // find them
+            for (Symbol s : symbols) {
+                if (s.external) {
+                    for (int fillAddr : s.fillAddresses) {
+                        sym.printf(fmt, fillAddr, s.label, 1);
+                    }
+                }
+            }
 
             debug.println("Success!!");
             System.out.println("Success!!");
@@ -451,25 +447,24 @@ public class LC3asm {
      * creates the entry in obj file
      */
     private static void gen_fill(List<String> words) {
-        boolean nested = false;
+        boolean label = false;
         int value = 999999999; // default value too large for 16 bits
         try {
             value = str2int(words.get(1)); // extract value from assembly code
         } catch (NumberFormatException nfe) {
-            nested = true; // parameter for fill is actually a label
+            label = true; // parameter for fill is actually a label
         }
-        if (pass == 1) {
-            if (nested) {
-                for (Symbol s : symbolTable.values()) { //search the symbol table and update the nested characteristics
-                    if (s.address == lc) {
-                        s.nested = true;
-                        s.nestLabel = words.get(1);
-                    }
+        if (pass == 2) {
+            if (label) {
+                Symbol symbol = symbolTable.get(words.get(1));
+                if (symbol.external) {
+                    // write a zero word here for now. the linker will this in
+                    output(int2hex(0x0000));
+                    // keep track of this so we can tell the linker to fill it in
+                    symbol.fillAddresses.add(lc);
+                } else {
+                    output(int2hex(symbol.address));
                 }
-            }
-        } else if (pass == 2) {
-            if (nested) {
-                output(int2hex(symbolTable.get(words.get(1)).address));
             } else {
                 output(int2hex(value)); // add the hex value to the object file
             }
@@ -484,7 +479,7 @@ public class LC3asm {
     private static void gen_external(List<String> words) {
         if (pass == 1) {
             Symbol external = new Symbol(-1, words.get(1));
-            external.extern_symbol = true;
+            external.external = true;
             symbolTable.put(words.get(1), external);
         }
     }
@@ -645,6 +640,10 @@ public class LC3asm {
 
             String lbl = words.get(1);
             Symbol s = symbolTable.get(lbl);
+            if (s.external) {
+                debug.println("cannot use external label for pc-offset: " + words);
+                System.exit(1);
+            }
             int offset = s.address - (lc + 1); //PCOffset is from lc+1
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
@@ -693,6 +692,10 @@ public class LC3asm {
 
             String lbl = words.get(1);
             Symbol s = symbolTable.get(lbl);
+            if (s.external) {
+                debug.println("cannot use external label for pc-offset: " + words);
+                System.exit(1);
+            }
             int offset = s.address - (lc + 1); //PCOffset is from lc+1
             if (!validate_2c_offset(offset, 11)) {
                 System.exit(1);
@@ -745,8 +748,12 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
+            if (s.external) {
+                debug.println("cannot use external label for pc-offset: " + words);
+                System.exit(1);
+            }
             int offset = s.address - (lc + 1);
-            if (!validate_2c_offset(offset, 11)) {
+            if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
             }
             offset = offset & 0x01FF; // keep lower 9 bits
@@ -774,8 +781,13 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
+            if (s.external) {
+                debug.println("cannot use external label for pc-offset: " + words);
+                System.exit(1);
+            }
             int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
+                debug.println("invalid 11-bit PC offset" + offset);
                 System.exit(1);
             }
             offset = offset & 0x01FF; // keep lower 9 bits
@@ -835,6 +847,10 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
+            if (s.external) {
+                debug.println("cannot use external label for pc-offset: " + words);
+                System.exit(1);
+            }
             int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
@@ -900,6 +916,10 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
+            if (s.external) {
+                debug.println("cannot use external label for pc-offset: " + words);
+                System.exit(1);
+            }
             int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
@@ -929,6 +949,10 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
+            if (s.external) {
+                debug.println("cannot use external label for pc-offset: " + words);
+                System.exit(1);
+            }
             int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
