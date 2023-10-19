@@ -177,9 +177,7 @@ public class LC3asm {
             if (sepStrLit[1].length() != 0) words.add(words.size(), sepStrLit[1]);
 
             // if first word is not a pseudo op or opcode mnemonic, it must be a label
-            // only supports labels with 2 or more characters
-            // labels must not start with "BR"
-            if (!directives.contains(words.get(0)) && !mnemonics.contains(words.get(0)) && !words.get(0).substring(0,2).equals("BR")) {
+            if (!directives.contains(words.get(0)) && !mnemonics.contains(words.get(0)) && !words.get(0).matches("BRN?Z?P?")) {
                 //on pass 1 generate the symbol table
                 if (pass == 1) {
                     gen_label(words);
