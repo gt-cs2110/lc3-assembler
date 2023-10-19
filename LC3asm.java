@@ -16,6 +16,7 @@ import java.util.Collections;
  *      ex: ORIG: x3000
  * some bounds checks for labels, offsets, and immediate values
  * Author: Pulkit Gupta
+ * Chief Executive Sabotager: Austin Adams
  */
 public class LC3asm {
 
@@ -55,7 +56,7 @@ public class LC3asm {
     static Map<String, Symbol> symbolTable = new HashMap<>(); // runtime copy of symbol table
     static String[] pseudoOps = {".ORIG", ".END", ".FILL", ".BLKW", ".STRINGZ", ".EXTERNAL"}; // array of pseudoOps
     static List<String> directives = Arrays.asList(pseudoOps); // list of all pseudoOps
-    static String[] instructions = {"ADD", "AND", "BR", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "GETC", "OUT", "PUTS", "IN", "HALT"};
+    static String[] instructions = {"ADD", "AND", "BR", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "GETC", "PUTC", "OUT", "PUTS", "IN", "HALT"};
     static List<String> mnemonics = Arrays.asList(instructions); // list of all instructions and Trap Aliases
     static boolean done = false; // detect if missing end statements
 
@@ -284,16 +285,17 @@ public class LC3asm {
                         case 16: //GETC
                             gen_getc(words);
                             break;
-                        case 17: //OUT
+                        case 17: //PUTC
+                        case 18: //OUT
                             gen_out(words);
                             break;
-                        case 18: //PUTS
+                        case 19: //PUTS
                             gen_puts(words);
                             break;
-                        case 19: //IN
+                        case 20: //IN
                             gen_in(words);
                             break;
-                        case 20: //HALT
+                        case 21: //HALT
                             gen_halt(words);
                             break;
                         default:
