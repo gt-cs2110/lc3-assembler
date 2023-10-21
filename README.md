@@ -35,6 +35,13 @@ on the left):
 
     java ObjToLC3Tools linked.obj
 
+As a bonus, you can [disassemble][4] an object file back into assembly like
+this (will create `linked.dis.asm`. The `-x` optionally writes `.fill`s in
+hexadecimal rather than the default of interpreting the word as 16-bit two's
+complement):
+
+    java LC3disasm -x linked.obj
+
 Try all those commands and see what happens! We provided `my_library.asm` and
 `my_assembly.asm` in this repository for your convenience.
 
@@ -54,3 +61,4 @@ If you are on Windows, [please see this helpful page][2].
 [1]: https://github.com/gt-cs2110/lc3tools
 [2]: http://web.archive.org/web/20180426064655/http://dilbert.com/strip/1995-06-24
 [3]: https://www.google.com/search?q=shell+aliases
+[4]: https://en.wikipedia.org/wiki/Disassembler

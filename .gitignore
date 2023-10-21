@@ -4,3 +4,4 @@
 *.sym
 *.class
 *.dbgsym
+*.dis.asm
