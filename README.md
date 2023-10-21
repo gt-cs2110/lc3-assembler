@@ -42,8 +42,9 @@ complement):
 
     java LC3disasm -x linked.obj
 
-Try all those commands and see what happens! We provided `my_library.asm` and
-`my_assembly.asm` in this repository for your convenience.
+Try all those commands and see what happens! Look at the generated files! And
+look at the source code in all the `*.java` files, too! We provided
+`my_library.asm` and `my_assembly.asm` in this repository for your convenience.
 
 Shell Aliases
 -------------
