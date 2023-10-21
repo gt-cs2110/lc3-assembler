@@ -56,7 +56,7 @@ public class LC3asm {
     static Map<String, Symbol> symbolTable = new HashMap<>(); // runtime copy of symbol table
     static String[] pseudoOps = {".ORIG", ".END", ".FILL", ".BLKW", ".STRINGZ", ".EXTERNAL"}; // array of pseudoOps
     static List<String> directives = Arrays.asList(pseudoOps); // list of all pseudoOps
-    static String[] instructions = {"ADD", "AND", "BR", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "GETC", "PUTC", "OUT", "PUTS", "IN", "HALT"};
+    static String[] instructions = {"ADD", "AND", "BR", "NOP", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "GETC", "PUTC", "OUT", "PUTS", "IN", "HALT"};
     static List<String> mnemonics = Arrays.asList(instructions); // list of all instructions and Trap Aliases
     static boolean done = false; // detect if missing end statements
 
@@ -230,7 +230,7 @@ public class LC3asm {
                     //need to catch BR statements here as the conditioncode is part of the opcode mnemonic
                     gen_br(words);
                 } else {
-                //{"ADD", "AND", "BR", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "HALT"}
+                //{"ADD", "AND", "BR", "NOP", "JMP", "JSR", "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "ST", "STI", "STR", "TRAP", "GETC", "PUTC", "OUT", "PUTS", "IN", "HALT"}
                     switch (mnemonics.indexOf(words.get(0))) {
                         case 0: // ADD
                             gen_add(words);
@@ -238,62 +238,65 @@ public class LC3asm {
                         case 1: // AND
                             gen_and(words);
                             break;
-                        case 2: // BR, this is caught earlier because of nzp being part of the mnemonic
+                        case 2: // NOP
+                            gen_nop(words);
+                            break;
+                        case 3: // BR, this is caught earlier because of nzp being part of the mnemonic
                             //gen_br(words);
                             break;
-                        case 3: // JMP
+                        case 4: // JMP
                             gen_jmp(words);
                             break;
-                        case 4: // JSR
+                        case 5: // JSR
                             gen_jsr(words);
                             break;
-                        case 5: // JSRR
+                        case 6: // JSRR
                             gen_jsrr(words);
                             break;
-                        case 6: // LD
+                        case 7: // LD
                             gen_ld(words);
                             break;
-                        case 7: // LDI
+                        case 8: // LDI
                             gen_ldi(words);
                             break;
-                        case 8: // LDR
+                        case 9: // LDR
                             gen_ldr(words);
                             break;
-                        case 9: // LEA
+                        case 10: // LEA
                             gen_lea(words);
                             break;
-                        case 10: // NOT
+                        case 11: // NOT
                             gen_not(words);
                             break;
-                        case 11: // RET
+                        case 12: // RET
                             gen_ret(words);
                             break;
-                        case 12: // ST
+                        case 13: // ST
                             gen_st(words);
                             break;
-                        case 13: // STI
+                        case 14: // STI
                             gen_sti(words);
                             break;
-                        case 14: // STR
+                        case 15: // STR
                             gen_str(words);
                             break;
-                        case 15: // TRAP
+                        case 16: // TRAP
                             gen_trap(words);
                             break;
-                        case 16: //GETC
+                        case 17: //GETC
                             gen_getc(words);
                             break;
-                        case 17: //PUTC
-                        case 18: //OUT
+                        case 18: //PUTC
+                        case 19: //OUT
                             gen_out(words);
                             break;
-                        case 19: //PUTS
+                        case 20: //PUTS
                             gen_puts(words);
                             break;
-                        case 20: //IN
+                        case 21: //IN
                             gen_in(words);
                             break;
-                        case 21: //HALT
+                        case 22: //HALT
                             gen_halt(words);
                             break;
                         default:
@@ -610,6 +613,21 @@ public class LC3asm {
             val = val & 0x001F; // only keep the lower 5 bits of the imm;
             instruction = opcode << 12 | dr << 9 | sr1 << 6 | imm << 5 | val;
             output(int2hex(instruction));
+        }
+        lc++;
+    }
+
+    /**
+     * generates the binary encoding of a no-op
+     */
+    private static void gen_nop(List<String> words) {
+        if (pass == 2) {
+            if (!words.isEmpty()) {
+                debug.println("invalid NOP: " + words);
+                System.exit(1);
+            }
+            // This is a BR with all conditions set to 0 (so it is never taken)
+            output(int2hex(0x0000));
         }
         lc++;
     }
