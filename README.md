@@ -56,6 +56,7 @@ invoking the assembler, linker, etc. outside of this repository:
     alias lc3as='java -cp $lc3asmrepo LC3asm'
     alias lc3ld='java -cp $lc3asmrepo LC3link'
     alias lc3conv='java -cp $lc3asmrepo ObjToLC3Tools'
+    alias lc3disas='java -cp $lc3asmrepo LC3disasm'
 
 If you are on Windows, [please see this helpful page][2].
 
