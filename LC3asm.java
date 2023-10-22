@@ -658,11 +658,18 @@ public class LC3asm {
 
             String lbl = words.get(1);
             Symbol s = symbolTable.get(lbl);
-            if (s.external) {
-                debug.println("cannot use external label for pc-offset: " + words);
-                System.exit(1);
+            int offset;
+            if (s != null) {
+                if (s.external) {
+                    debug.println("cannot use external label for pc-offset: " + words);
+                    System.exit(1);
+                }
+                offset = s.address - (lc + 1); //PCOffset is from lc+1
+            } else {
+                // if operand is not a label in the symbol table, assume it's a
+                // hardcoded offset instead (e.g., `-3')
+                offset = str2int(lbl);
             }
-            int offset = s.address - (lc + 1); //PCOffset is from lc+1
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
             }
@@ -710,11 +717,18 @@ public class LC3asm {
 
             String lbl = words.get(1);
             Symbol s = symbolTable.get(lbl);
-            if (s.external) {
-                debug.println("cannot use external label for pc-offset: " + words);
-                System.exit(1);
+            int offset;
+            if (s != null) {
+                if (s.external) {
+                    debug.println("cannot use external label for pc-offset: " + words);
+                    System.exit(1);
+                }
+                offset = s.address - (lc + 1); //PCOffset is from lc+1
+            } else {
+                // if operand is not a label in the symbol table, assume it's a
+                // hardcoded offset instead (e.g., `-3')
+                offset = str2int(lbl);
             }
-            int offset = s.address - (lc + 1); //PCOffset is from lc+1
             if (!validate_2c_offset(offset, 11)) {
                 System.exit(1);
             }
@@ -766,11 +780,18 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
-            if (s.external) {
-                debug.println("cannot use external label for pc-offset: " + words);
-                System.exit(1);
+            int offset;
+            if (s != null) {
+                if (s.external) {
+                    debug.println("cannot use external label for pc-offset: " + words);
+                    System.exit(1);
+                }
+                offset = s.address - (lc + 1); //PCOffset is from lc+1
+            } else {
+                // if operand is not a label in the symbol table, assume it's a
+                // hardcoded offset instead (e.g., `-3')
+                offset = str2int(lbl);
             }
-            int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
             }
@@ -799,11 +820,18 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
-            if (s.external) {
-                debug.println("cannot use external label for pc-offset: " + words);
-                System.exit(1);
+            int offset;
+            if (s != null) {
+                if (s.external) {
+                    debug.println("cannot use external label for pc-offset: " + words);
+                    System.exit(1);
+                }
+                offset = s.address - (lc + 1); //PCOffset is from lc+1
+            } else {
+                // if operand is not a label in the symbol table, assume it's a
+                // hardcoded offset instead (e.g., `-3')
+                offset = str2int(lbl);
             }
-            int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 debug.println("invalid 11-bit PC offset" + offset);
                 System.exit(1);
@@ -865,11 +893,18 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
-            if (s.external) {
-                debug.println("cannot use external label for pc-offset: " + words);
-                System.exit(1);
+            int offset;
+            if (s != null) {
+                if (s.external) {
+                    debug.println("cannot use external label for pc-offset: " + words);
+                    System.exit(1);
+                }
+                offset = s.address - (lc + 1); //PCOffset is from lc+1
+            } else {
+                // if operand is not a label in the symbol table, assume it's a
+                // hardcoded offset instead (e.g., `-3')
+                offset = str2int(lbl);
             }
-            int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
             }
@@ -934,11 +969,18 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
-            if (s.external) {
-                debug.println("cannot use external label for pc-offset: " + words);
-                System.exit(1);
+            int offset;
+            if (s != null) {
+                if (s.external) {
+                    debug.println("cannot use external label for pc-offset: " + words);
+                    System.exit(1);
+                }
+                offset = s.address - (lc + 1); //PCOffset is from lc+1
+            } else {
+                // if operand is not a label in the symbol table, assume it's a
+                // hardcoded offset instead (e.g., `-3')
+                offset = str2int(lbl);
             }
-            int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
             }
@@ -967,11 +1009,18 @@ public class LC3asm {
             }
             String lbl = words.get(2);
             Symbol s = symbolTable.get(lbl);
-            if (s.external) {
-                debug.println("cannot use external label for pc-offset: " + words);
-                System.exit(1);
+            int offset;
+            if (s != null) {
+                if (s.external) {
+                    debug.println("cannot use external label for pc-offset: " + words);
+                    System.exit(1);
+                }
+                offset = s.address - (lc + 1); //PCOffset is from lc+1
+            } else {
+                // if operand is not a label in the symbol table, assume it's a
+                // hardcoded offset instead (e.g., `-3')
+                offset = str2int(lbl);
             }
-            int offset = s.address - (lc + 1);
             if (!validate_2c_offset(offset, 9)) {
                 System.exit(1);
             }
