@@ -164,7 +164,7 @@ public class LC3asm {
                 int idx = input.indexOf("\"");
                 sepStrLit[0] = input.substring(0, idx).toUpperCase(); // uppercase to ease parsing
                 sepStrLit[1] = input.substring(idx+1, input.length()-1); // remainder of line except for quotes
-                if (input.charAt(input.length() - 1) != '\"') { // check for closing '\"' in string literal
+                if (input.charAt(input.length() - 1) != '\"') { // check for closing " in string literal
                     debug.println("invalid string literal in line");
                     System.exit(1);
                 }
@@ -506,27 +506,36 @@ public class LC3asm {
      */
     private static void gen_stringz(List<String> words) {
         String s = words.get(1); //the string to be placed in memory at LC
-        int len = s.length();
-        if (pass == 2) {
-            for (int i = 0; i < len; i++) {
-                int c = (int) s.charAt(i);
-                if (s.charAt(i) == '\\') { // catch escape characters
-                    if (s.charAt(i+1) == 'n') {
-                        output(int2hex(0x20)); // unfortunately due to the way len is implemented, will need to replace the '\' char with a space
-                        output(int2hex(0x0D));
-                        i++;
-                    } else {
-                        output(int2hex(c)); //output a slash if unimplemented escape character
-                    }
-                } else{
-                    output(int2hex(c)); // place char in memory
+
+        // in pass 1, the only job of this is to calculate the length of the
+        // string. then in pass 2, we actually output the characters
+        List<Character> chars = new ArrayList<Character>();
+        boolean escape = false;
+        for (char c : s.toCharArray()) {
+            if (escape) {
+                switch (c) {
+                    case '\\': chars.add('\\'); break;
+                    case 'n': chars.add('\n'); break;
+                    case '"': chars.add('"'); break;
+                    // unknown escape! print it verbatim
+                    default: chars.add('\\'); chars.add(c); break;
                 }
+                escape = false;
+            } else if (c == '\\') {
+                escape = true;
+            } else {
+                chars.add(c);
             }
-            output(int2hex(0)); // null terminator (the z in stringZ)
         }
-        lc += (len - 1); // increment lc by size of string (-1 because first char is at initial lc)
-        lc += 1; // add the null terminator
-        lc++; // increment lc after processing an assembler directive
+        chars.add('\0'); // null terminator
+
+        int len = chars.size();
+        if (pass == 2) {
+            for (char c : chars) {
+                output(int2hex(c)); // place char in memory
+            }
+        }
+        lc += len; // increment lc by size of string, including null terminator
     }
 
     /**
